@@ -140,7 +140,9 @@ async function ghApi(url, options = {}){
 async function fetchConfig(){
   const res = await ghApi(`${API_BASE}/${repo}/contents/${DATA_PATH}?ref=${encodeURIComponent(branch)}`);
   const json = await res.json();
-  const text = atob(json.content.replace(/\n/g, ""));
+  /* UTF-8 安全解码：atob 输出是 Latin-1，中文必须先转字节数组再由 TextDecoder 解码 */
+  const rawBin = atob(json.content.replace(/\n/g, ""));
+  const text = new TextDecoder().decode(Uint8Array.from(rawBin, (char) => char.charCodeAt(0)));
   config = normalizeConfig(JSON.parse(text));
   $("#topMeta").textContent = "已加载线上内容 · 保存后覆盖发布";
 }
