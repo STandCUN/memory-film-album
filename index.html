@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>折叠的旧时光 · 回忆录胶片相册</title>
+<meta name="description" content="一个安静的胶片实体回忆录相册网页，图片为主、文字为辅。">
+<meta name="theme-color" content="#F7F3ED">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --ink: #5C4B42;
+  --kraft: #BFA89A;
+  --paper: #F7F3ED;
+  --mist: #DCD6CF;
+  --slate: #443A34;
+  --ink-72: rgba(92, 75, 66, .72);
+  --ink-58: rgba(92, 75, 66, .58);
+  --ink-38: rgba(92, 75, 66, .38);
+  --ink-18: rgba(92, 75, 66, .18);
+  --ink-08: rgba(92, 75, 66, .08);
+  --ink-04: rgba(92, 75, 66, .04);
+  --paper-86: rgba(247, 243, 237, .86);
+  --paper-72: rgba(247, 243, 237, .72);
+  --paper-42: rgba(247, 243, 237, .42);
+  --shadow-soft: rgba(92, 75, 66, .10);
+  --shadow-lift: rgba(92, 75, 66, .14);
+  --dark-veil: rgba(37, 30, 27, .82);
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  --font-sans: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --radius-outer: 18px;
+  --radius-inner: 10px;
+  --radius-pill: 999px;
+}
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{
+  margin:0; min-height:100vh;
+  background-color:var(--paper);
+  background-image:
+    radial-gradient(circle at 18% 12%, var(--ink-04) 0, transparent 42%),
+    radial-gradient(circle at 82% 88%, var(--ink-04) 0, transparent 40%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='paperGrain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23paperGrain)' opacity='.032'/%3E%3C/svg%3E");
+  color:var(--ink); font-family:var(--font-sans); font-size:15px; line-height:1.6; overflow-x:hidden;
+}
+body.no-scroll{ overflow:hidden; }
+img{ max-width:100%; display:block; }
+button{ border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }
+#heartCanvas{ position:fixed; inset:0; z-index:0; width:100%; height:100%; pointer-events:none; }
+#pageStage{ position:relative; z-index:1; }
+.cover{ position:relative; min-height:100svh; display:grid; place-items:center; overflow:hidden; padding:clamp(24px, 6vw, 72px); }
+.cover-image{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:sepia(.06) brightness(.94) contrast(.98) saturate(.88); }
+.cover-veil{ position:absolute; inset:0; background:linear-gradient(180deg, var(--paper-72), var(--paper-42) 48%, var(--paper-86)); opacity:.72; }
+.cover-content{ position:relative; max-width:680px; text-align:center; padding:clamp(22px, 5vw, 48px); }
+.cover-kicker{ margin:0 0 18px; font-size:11px; letter-spacing:.38em; color:var(--ink-58); }
+.album-title{ margin:0; font-family:var(--font-serif); font-weight:500; font-size:clamp(2.1rem, 5.6vw, 4.4rem); letter-spacing:.08em; color:var(--ink); }
+.album-quote{ margin:22px auto 0; max-width:46ch; font-weight:300; font-size:clamp(.94rem, 1.5vw, 1.05rem); color:var(--ink-72); }
+.cover-rule{ width:62px; height:1px; margin:34px auto 0; background:var(--kraft); opacity:.5; }
+.album{ max-width:1160px; margin:0 auto; padding:clamp(64px, 9vw, 108px) clamp(18px, 5vw, 34px) 82px; }
+.chapter + .chapter{ margin-top:clamp(82px, 11vw, 140px); padding-top:clamp(46px, 6vw, 70px); border-top:1px solid var(--ink-18); }
+.chapter-head{ margin:0 0 44px; display:grid; gap:12px; }
+.chapter-no{ font-size:11px; letter-spacing:.34em; color:var(--kraft); }
+.chapter-title{ margin:0; font-family:var(--font-serif); font-weight:500; font-size:clamp(1.45rem, 3vw, 2.1rem); letter-spacing:.06em; }
+.chapter-subtitle{ margin:0; font-weight:300; font-size:.9rem; color:var(--ink-58); }
+.chapter-rule{ width:48px; height:1px; background:var(--kraft); opacity:.42; }
+.photo-grid{ display:grid; grid-template-columns:repeat(12, 1fr); align-items:start; gap:34px 28px; }
+.photo-card{ margin:0; opacity:0; transform:translateY(24px); transition:opacity .85s ease, transform .85s ease, filter .3s ease, box-shadow .3s ease; }
+.photo-card:nth-child(4n + 1){ grid-column:span 7; }
+.photo-card:nth-child(4n + 2){ grid-column:span 5; margin-top:30px; }
+.photo-card:nth-child(4n + 3){ grid-column:span 5; margin-top:-6px; }
+.photo-card:nth-child(4n + 4){ grid-column:span 7; margin-top:26px; }
+.photo-card.is-visible{ opacity:1; transform:translateY(0); }
+.photo-button{ display:block; width:100%; text-align:left; padding:0; }
+.photo-frame{ position:relative; display:block; padding:13px 13px 15px; background:var(--paper); border-radius:var(--radius-outer); box-shadow:0 18px 38px var(--shadow-soft), inset 0 0 0 1px var(--ink-08); overflow:hidden; transition:transform .3s ease, box-shadow .3s ease; }
+.photo-frame::after{ content:""; position:absolute; inset:13px 13px 15px; border-radius:var(--radius-inner); background:radial-gradient(circle at center, transparent 58%, var(--ink-08) 100%); pointer-events:none; }
+.photo-image{ width:100%; aspect-ratio:4 / 5; object-fit:cover; border-radius:var(--radius-inner); filter:sepia(.05) brightness(.97) contrast(.98) saturate(.9); transition:filter .3s ease, transform .45s ease; }
+.photo-card:nth-child(4n + 2) .photo-image{ aspect-ratio:3 / 4; }
+.photo-card:nth-child(4n + 3) .photo-image{ aspect-ratio:1 / 1; }
+.photo-card:nth-child(4n + 4) .photo-image{ aspect-ratio:4 / 3; }
+.photo-note{ margin:14px 4px 0; font-size:.82rem; font-weight:300; color:var(--ink-72); letter-spacing:.02em; }
+.photo-card:hover .photo-frame,
+.photo-card:focus-within .photo-frame{ transform:translateY(-6px); box-shadow:0 26px 48px var(--shadow-lift), inset 0 0 0 1px var(--ink-18); }
+.photo-card:hover .photo-image,
+.photo-card:focus-within .photo-image{ filter:sepia(.04) brightness(1.04) contrast(1) saturate(.94); }
+.album-footer{ max-width:760px; margin:0 auto; padding:64px clamp(18px, 5vw, 34px) 104px; text-align:center; border-top:1px solid var(--ink-18); }
+.album-signature{ margin:0 0 10px; font-family:var(--font-serif); font-weight:400; font-size:1.05rem; color:var(--ink); }
+.album-date{ margin:0; font-size:.78rem; letter-spacing:.22em; color:var(--ink-58); }
+.footer-admin{ margin:14px auto 0; font-size:.72rem; letter-spacing:.12em; color:var(--ink-58); }
+.footer-admin a{ color:var(--ink-58); text-decoration:underline; text-underline-offset:3px; }
+.music-dock{ position:fixed; right:18px; bottom:18px; z-index:1200; display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:var(--radius-pill); background:var(--paper-86); box-shadow:0 12px 28px var(--shadow-soft); }
+.music-toggle{ width:34px; height:34px; border-radius:var(--radius-pill); background:var(--kraft); color:var(--paper); font-size:12px; display:grid; place-items:center; transition:filter .2s ease; }
+.music-toggle:hover{ filter:brightness(1.06); }
+.music-volume{ width:84px; accent-color:var(--kraft); }
+.lightbox{ position:fixed; inset:0; z-index:1500; display:grid; place-items:center; padding:5vh 5vw; background:var(--dark-veil); opacity:0; visibility:hidden; transition:opacity .28s ease, visibility .28s ease; }
+.lightbox.open{ opacity:1; visibility:visible; }
+.lightbox-inner{ position:relative; max-width:min(1100px, 92vw); max-height:90vh; display:grid; justify-items:center; gap:16px; }
+.lightbox-image{ max-width:100%; max-height:80vh; object-fit:contain; border-radius:var(--radius-inner); box-shadow:0 26px 60px var(--shadow-soft); }
+.lightbox-caption{ margin:0; max-width:70ch; text-align:center; color:var(--paper); font-size:.84rem; font-weight:300; opacity:.82; }
+.lightbox-close{ position:absolute; top:-8px; right:-8px; width:34px; height:34px; border-radius:var(--radius-pill); background:var(--paper); color:var(--ink); font-size:14px; box-shadow:0 10px 24px var(--shadow-soft); }
+.lightbox-nav{ position:absolute; top:50%; width:34px; height:34px; border-radius:var(--radius-pill); background:var(--paper-86); color:var(--ink); display:grid; place-items:center; transform:translateY(-50%); }
+.lightbox-prev{ left:-14px; }
+.lightbox-next{ right:-14px; }
+@media (max-width: 820px){
+  .photo-grid{ grid-template-columns:1fr; gap:34px; }
+  .photo-card:nth-child(n){ grid-column:auto; margin-top:0; }
+  .photo-card:nth-child(even) .photo-image{ aspect-ratio:3 / 4; }
+  .photo-card:nth-child(odd) .photo-image{ aspect-ratio:4 / 5; }
+  .music-volume{ width:62px; }
+  .lightbox{ padding:6vh 5vw; }
+  .lightbox-prev{ left:-6px; }
+  .lightbox-next{ right:-6px; }
+}
+@media (prefers-reduced-motion: reduce){
+  *{ transition-duration:.01ms !important; animation-duration:.01ms !important; }
+  .photo-card{ opacity:1; transform:none; }
+}
+</style>
+</head>
+<body>
+<canvas id="heartCanvas" aria-hidden="true"></canvas>
+<div id="pageStage">
+  <header class="cover">
+    <img id="coverImage" class="cover-image" src="" alt="相册封面">
+    <div class="cover-veil" aria-hidden="true"></div>
+    <div class="cover-content">
+      <p class="cover-kicker">MEMORY FILM ALBUM</p>
+      <h1 id="albumTitle" class="album-title"></h1>
+      <p id="albumQuote" class="album-quote"></p>
+      <div class="cover-rule" aria-hidden="true"></div>
+    </div>
+  </header>
+  <main id="album" class="album"></main>
+  <footer class="album-footer">
+    <p id="albumSignature" class="album-signature"></p>
+    <p id="albumDate" class="album-date"></p>
+    <p class="footer-admin"><a href="admin.html">· 编辑相册 ·</a></p>
+  </footer>
+</div>
+<div class="music-dock">
+  <button id="musicToggle" class="music-toggle" type="button" aria-label="播放或暂停背景音乐">♪</button>
+  <input id="musicVolume" class="music-volume" type="range" min="0" max="1" step="0.01" value="0.35" aria-label="背景音乐音量">
+</div>
+<audio id="albumAudio" preload="none" loop></audio>
+<div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-hidden="true" aria-label="照片大图预览">
+  <div class="lightbox-inner">
+    <button id="lightboxClose" class="lightbox-close" type="button" aria-label="关闭大图">✕</button>
+    <button id="lightboxPrev" class="lightbox-nav lightbox-prev" type="button" aria-label="上一张">‹</button>
+    <img id="lightboxImage" class="lightbox-image" src="" alt="">
+    <p id="lightboxCaption" class="lightbox-caption"></p>
+    <button id="lightboxNext" class="lightbox-nav lightbox-next" type="button" aria-label="下一张">›</button>
+  </div>
+</div>
+<script>
+function applyMeta(){
+  const m = state.meta;
+  $("#coverImage").src = m.coverImage || "";
+  $("#albumTitle").textContent = m.title || "";
+  $("#albumQuote").textContent = m.quote || "";
+  $("#albumSignature").textContent = m.signature || "";
+  $("#albumDate").textContent = m.date || "";
+}
+function createChapter(chapter, chapterIndex){
+  const section = document.createElement("section");
+  section.className = "chapter";
+  const head = document.createElement("header");
+  head.className = "chapter-head";
+  const no = document.createElement("p");
+  no.className = "chapter-no";
+  no.textContent = String(chapterIndex + 1).padStart(2, "0");
+  const title = document.createElement("h2");
+  title.className = "chapter-title";
+  title.textContent = chapter.title || "";
+  const subtitle = document.createElement("p");
+  subtitle.className = "chapter-subtitle";
+  subtitle.textContent = chapter.subtitle || "";
+  const rule = document.createElement("div");
+  rule.className = "chapter-rule";
+  head.append(no, title, subtitle, rule);
+
+  const grid = document.createElement("div");
+  grid.className = "photo-grid";
+  chapter.photos.forEach((photo, photoIndex) => {
+    const figure = document.createElement("figure");
+    figure.className = "photo-card";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "photo-button";
+    button.setAttribute("aria-label", "查看大图");
+    button.dataset.chapter = String(chapterIndex);
+    button.dataset.photo = String(photoIndex);
+    const frame = document.createElement("span");
+    frame.className = "photo-frame";
+    const image = document.createElement("img");
+    image.className = "photo-image";
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.src = photo.src || "";
+    image.alt = photo.note || "回忆照片";
+    image.addEventListener("error", () => {
+      image.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='5' viewBox='0 0 4 5'%3E%3Crect width='4' height='5' fill='%23F7F3ED'/%3E%3Ctext x='2' y='3' text-anchor='middle' font-size='.55' fill='%23BFA89A'%3Ephoto%3C/text%3E%3C/svg%3E";
+    });
+    frame.append(image);
+    button.append(frame);
+    const note = document.createElement("figcaption");
+    note.className = "photo-note";
+    note.textContent = photo.note || "";
+    figure.style.transitionDelay = `${(photoIndex % 4) * 72}ms`;
+    figure.append(button, note);
+    grid.append(figure);
+  });
+  section.append(head, grid);
+  return section;
+}
+function renderAlbum(){
+  albumEl.replaceChildren();
+  state.chapters.forEach((chapter, chapterIndex) => albumEl.append(createChapter(chapter, chapterIndex)));
+  observeReveals();
+}
+function observeReveals(){
+  if(revealObserver) revealObserver.disconnect();
+  revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if(entry.isIntersecting){
+        entry.target.classList.add("is-visible");
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { rootMargin:"0px 0px -8% 0px", threshold:.12 });
+  document.querySelectorAll(".photo-card").forEach((card) => revealObserver.observe(card));
+}
+/* 爱心粒子：颜色仅牛皮浅棕/米白，数量上限12、间隔2.5s、生命6~12s，canvas 渲染，失焦暂停 */
+const canvas = $("#heartCanvas");
+const context = canvas.getContext("2d");
+const HEART_COLORS = ["#BFA89A", "#F7F3ED"];
+const HEART_MIN_SIZE = 6, HEART_MAX_SIZE = 18;
+const HEART_MIN_ALPHA = .15, HEART_MAX_ALPHA = .35;
+const HEART_MIN_LIFE = 6, HEART_MAX_LIFE = 12;
+const HEART_SPAWN_INTERVAL = 2.5;
+let hearts = [];
+let spawnAccumulator = HEART_SPAWN_INTERVAL;
+let heartRafId = null;
+let heartPaused = false;
+let lastFrameTime = performance.now();
+function resizeCanvas(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  canvas.width = Math.round(canvas.clientWidth * dpr);
+  canvas.height = Math.round(canvas.clientHeight * dpr);
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", resizeCanvas);
+function drawHeart(x, y, size, alpha, color){
+  const s = size / 2;
+  context.save();
+  context.globalAlpha = alpha;
+  context.fillStyle = color;
+  context.beginPath();
+  context.moveTo(x, y + s * .62);
+  context.bezierCurveTo(x + s * .98, y - s * .58, x + s * 1.62, y + s * .55, x, y + s * 1.82);
+  context.bezierCurveTo(x - s * 1.62, y + s * .55, x - s * .98, y - s * .58, x, y + s * .62);
+  context.fill();
+  context.restore();
+}
+function spawnHeart(){
+  const maxHearts = window.innerWidth < 768 ? 9 : 12;
+  if(hearts.length >= maxHearts) return;
+  hearts.push({
+    x:Math.random() * canvas.clientWidth,
+    y:canvas.clientHeight + 30,
+    size:HEART_MIN_SIZE + Math.random() * (HEART_MAX_SIZE - HEART_MIN_SIZE),
+    alpha:HEART_MIN_ALPHA + Math.random() * (HEART_MAX_ALPHA - HEART_MIN_ALPHA),
+    life:HEART_MIN_LIFE + Math.random() * (HEART_MAX_LIFE - HEART_MIN_LIFE),
+    age:0, vy:-(26 + Math.random() * 22),
+    swayPhase:Math.random() * Math.PI * 2,
+    swayAmount:6 + Math.random() * 7,
+    color:HEART_COLORS[Math.random() < .5 ? 0 : 1]
+  });
+}
+function heartFrame(now){
+  const dt = Math.min((now - lastFrameTime) / 1000, .05);
+  lastFrameTime = now;
+  context.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  if(heartSpawningAllowed){
+    spawnAccumulator += dt;
+    if(spawnAccumulator >= HEART_SPAWN_INTERVAL){ spawnAccumulator = 0; spawnHeart(); }
+  }
+  hearts = hearts.filter((heart) => {
+    heart.age += dt;
+    if(heart.age >= heart.life) return false;
+    heart.y += heart.vy * dt;
+    const progress = heart.age / heart.life;
+    const sway = Math.sin(progress * Math.PI * 1.6 + heart.swayPhase) * heart.swayAmount;
+    const fadeIn = Math.min(1, heart.age / (heart.life * .16));
+    const fadeOut = 1 - Math.max(0, (heart.age - heart.life * .65) / (heart.life * .35));
+    drawHeart(heart.x + sway, heart.y, heart.size, heart.alpha * fadeIn * fadeOut, heart.color);
+    return true;
+  });
+  if(!heartPaused) heartRafId = requestAnimationFrame(heartFrame);
+}
+function pauseHearts(){ heartPaused = true; if(heartRafId) cancelAnimationFrame(heartRafId); heartRafId = null; }
+function resumeHearts(){ if(heartPaused === false) return; heartPaused = false; lastFrameTime = performance.now(); heartRafId = requestAnimationFrame(heartFrame); }
+window.addEventListener("blur", pauseHearts);
+window.addEventListener("focus", resumeHearts);
+document.addEventListener("visibilitychange", () => { if(document.hidden) pauseHearts(); else resumeHearts(); });
+/* =========================================================
+   远程同步：读取仓库 data.json，并每 60 秒轮询刷新。
+   后台保存新的 data.json 后，前端不刷新也能在 1 分钟内自动变化。
+   ========================================================= */
+let lastSignature = "";
+function renderAll(){
+  renderAlbum();
+  applyMeta();
+  applyMusic();
+  lastSignature = JSON.stringify(state);
+}
+async function loadConfig(){
+  try{
+    const res = await fetch(`${CONFIG_URL}?t=${Date.now()}`, { cache:"no-store" });
+    if(!res.ok) throw new Error("fetch failed");
+    const data = await res.json();
+    const next = normalizeConfig(data);
+    if(JSON.stringify(next) !== lastSignature){
+      state = next;
+      renderAll();
+    }
+  }catch(error){
+    /* 读取失败时保留当前内容，不打断浏览 */
+  }
+}
+function startSync(){
+  renderAll();
+  loadConfig();
+  setInterval(loadConfig, REFRESH_MS);
+}
+(function init(){
+  resizeCanvas();
+  resumeHearts();
+  startSync();
+})();
+</script>
+<!--
+===================== 使用说明 =====================
+【永久网址】
+- 前端：https://standcun.github.io/memory-film-album/
+- 后台：https://standcun.github.io/memory-film-album/admin.html
+
+【后台改、前端同步的原理】
+- 后台 admin.html 保存时，会用 GitHub Token 把相册内容提交覆盖到本仓库的 data.json。
+- 前端每次打开都读取 data.json，并每 60 秒自动刷新一次；后台一保存，访问者不需要手动刷新就能看到新内容。
+- 无法读取 data.json 时会回退到页面内嵌的示例配置，保证页面始终能打开。
+
+【部署与维护】
+- 本仓库已开启 GitHub Pages，分支为 main。
+- 如需重新发布，直接把修改后的文件推送到 main 分支即可。
+-->
+</body>
+</html>

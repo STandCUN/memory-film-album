@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "title": "折叠的旧时光",
+    "quote": "把散落的片段，折成一页页温热的纸。",
+    "coverImage": "https://picsum.photos/id/1018/1800/2400",
+    "signature": "—— 写给那年的我们",
+    "date": "2026 · 10 · 15"
+  },
+  "music": {
+    "url": "",
+    "volume": 0.35
+  },
+  "chapters": [
+    {
+      "title": "一 · 启程",
+      "subtitle": "风把云压得很低，世界刚刚醒过来。",
+      "photos": [
+        { "src": "https://picsum.photos/id/1018/1200/1500", "note": "那天路很长，光却走得很慢。" },
+        { "src": "https://picsum.photos/id/1011/1200/1600", "note": "水面安静得像没有说完的话。" }
+      ]
+    },
+    {
+      "title": "二 · 途经",
+      "subtitle": "旧街、长影、细小的声音。",
+      "photos": [
+        { "src": "https://picsum.photos/id/1027/1200/900", "note": "午后的光，轻轻落在肩上。" },
+        { "src": "https://picsum.photos/id/1043/1200/1200", "note": "砖缝里长出了细小的草。" },
+        { "src": "https://picsum.photos/id/1050/1200/1500", "note": "有人递来一颗很甜的杏。" }
+      ]
+    },
+    {
+      "title": "三 · 归处",
+      "subtitle": "黄昏把街道染成牛皮纸的颜色。",
+      "photos": [
+        { "src": "https://picsum.photos/id/1035/1200/1350", "note": "我们坐在台阶上，谁也没有说话。" },
+        { "src": "https://picsum.photos/id/1036/1200/900", "note": "风停下来的时候，时间也慢了一点。" }
+      ]
+    }
+  ]
+}

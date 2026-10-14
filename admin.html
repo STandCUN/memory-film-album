@@ -1,0 +1,409 @@
+@media (max-width: 640px){
+  .topbar{ flex-direction:column; align-items:stretch; }
+  .topbar-actions{ justify-content:flex-start; }
+  .field-row{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title">
+    <h1>相册后台</h1>
+    <p id="topMeta">本地编辑 · 保存后同步到线上</p>
+  </div>
+  <div class="topbar-actions">
+    <button id="saveBtn" class="btn btn-primary" type="button">保存并发布</button>
+    <button id="reloadBtn" class="btn btn-ghost" type="button">重新加载</button>
+    <button id="resetBtn" class="btn btn-danger" type="button">恢复示例</button>
+  </div>
+</div>
+
+<!-- 首次使用：填写 GitHub Token -->
+<section id="setup" class="setup">
+  <h2>连接你的 GitHub 仓库</h2>
+  <p>在这个页面做的修改，会保存到你的相册仓库的 data.json 文件里，这样前端所有访客都能看到。Token 只保存在你当前浏览器本地，不会上传到其他地方。</p>
+  <div class="card">
+    <label class="field">GitHub Token（需要 repo 权限，即上面的 ghp_ 系列令牌）
+      <input id="tokenInput" type="password" placeholder="ghp_..." autocomplete="off">
+    </label>
+    <label class="field">仓库
+      <input id="repoInput" type="text" value="STandCUN/memory-film-album">
+    </label>
+    <label class="field">分支
+      <input id="branchInput" type="text" value="main">
+    </label>
+    <button id="connectBtn" class="btn btn-primary" type="button">连接并载入内容</button>
+    <p id="setupStatus" class="status"></p>
+  </div>
+</section>
+
+<!-- 编辑面板 -->
+<section id="editor" class="setup" style="display:none;">
+  <div class="section">
+    <h3>基础信息</h3>
+    <div class="card">
+      <label class="field">相册标题<input id="titleInput" type="text"></label>
+      <label class="field">开篇引言<textarea id="quoteInput"></textarea></label>
+      <label class="field">封面图片链接<input id="coverInput" type="text" placeholder="https://..."></label>
+      <div class="field-row">
+        <label class="field">落款<input id="signatureInput" type="text"></label>
+        <label class="field">纪念日期<input id="dateInput" type="text"></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>背景音乐</h3>
+    <div class="card">
+      <label class="field">音乐链接<input id="musicInput" type="text" placeholder="https://... .mp3 / .m4a / .ogg"></label>
+      <label class="field">默认音量
+        <input id="volumeInput" type="range" min="0" max="1" step="0.01">
+      </label>
+      <p class="hint">建议使用可长期访问的音频直链。浏览器可能在用户首次点击后才允许出声。</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>章节</h3>
+    <div id="chapterList"></div>
+    <button id="addChapterBtn" class="add-btn" type="button">＋ 新增章节</button>
+  </div>
+
+  <p id="status" class="status"></p>
+</section>
+
+<script>
+/* =========================================================
+   配置：相册后台编辑页。
+   读取/写入仓库 data.json（GitHub Contents API）。
+   ========================================================= */
+const $ = (s) => document.querySelector(s);
+const OWNER_REPO_DEFAULT = "STandCUN/memory-film-album";
+const BRANCH_DEFAULT = "main";
+const DATA_PATH = "data.json";
+let repo = OWNER_REPO_DEFAULT;
+let branch = BRANCH_DEFAULT;
+let token = "";
+let config = null;
+
+function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
+function clampNumber(v, min, max){ const n = Number(v); return Number.isNaN(n) ? min : Math.min(max, Math.max(min, n)); }
+function setStatus(msg, isError){ const el = $("#status"); if(el){ el.textContent = msg || ""; el.className = "status" + (isError ? " error" : ""); } }
+function setSetupStatus(msg, isError){ const el = $("#setupStatus"); if(el){ el.textContent = msg || ""; el.className = "status" + (isError ? " error" : ""); } }
+/* 默认示例配置（当仓库还没有 data.json 时使用） */
+const DEFAULT_CONFIG = {
+  meta:{ title:"折叠的旧时光", quote:"把散落的片段，折成一页页温热的纸。", coverImage:"https://picsum.photos/id/1018/1800/2400", signature:"—— 写给那年的我们", date:"2026 · 10 · 15" },
+  music:{ url:"", volume:.35 },
+  chapters:[
+    { title:"一 · 启程", subtitle:"风把云压得很低，世界刚刚醒过来。", photos:[
+      { src:"https://picsum.photos/id/1018/1200/1500", note:"那天路很长，光却走得很慢。" },
+      { src:"https://picsum.photos/id/1011/1200/1600", note:"水面安静得像没有说完的话。" }
+    ]},
+    { title:"二 · 途经", subtitle:"旧街、长影、细小的声音。", photos:[
+      { src:"https://picsum.photos/id/1027/1200/900", note:"午后的光，轻轻落在肩上。" },
+      { src:"https://picsum.photos/id/1043/1200/1200", note:"砖缝里长出了细小的草。" },
+      { src:"https://picsum.photos/id/1050/1200/1500", note:"有人递来一颗很甜的杏。" }
+    ]},
+    { title:"三 · 归处", subtitle:"黄昏把街道染成牛皮纸的颜色。", photos:[
+      { src:"https://picsum.photos/id/1035/1200/1350", note:"我们坐在台阶上，谁也没有说话。" },
+      { src:"https://picsum.photos/id/1036/1200/900", note:"风停下来的时候，时间也慢了一点。" }
+    ]}
+  ]
+};
+function normalizeConfig(input){
+  const base = deepClone(DEFAULT_CONFIG);
+  if(!input || typeof input !== "object") return base;
+  const out = base;
+  if(input.meta && typeof input.meta === "object") out.meta = { ...base.meta, ...input.meta };
+  if(input.music && typeof input.music === "object"){ out.music = { ...base.music, ...input.music }; out.music.volume = clampNumber(out.music.volume, 0, 1); }
+  if(Array.isArray(input.chapters)){
+    out.chapters = input.chapters.filter((c) => c && typeof c === "object").map((c) => ({
+      title:String(c.title || "未命名章节"), subtitle:String(c.subtitle || ""),
+      photos:Array.isArray(c.photos) ? c.photos.filter((p) => p && typeof p === "object").map((p) => ({ src:String(p.src || ""), note:String(p.note || "") })) : []
+    }));
+  }
+  return out;
+}
+
+/* ============ GitHub Contents API 封装 ============ */
+const API_BASE = "https://api.github.com/repos";
+async function ghApi(url, options = {}){
+  const headers = { Authorization:"Bearer " + token, "User-Agent":"admin", Accept:"application/vnd.github+json" };
+  const res = await fetch(url, { ...options, headers });
+  if(!res.ok){
+    let msg = `HTTP ${res.status}`;
+    try{ const j = await res.json(); if(j && j.message) msg += " — " + j.message; }catch(e){}
+    throw new Error(msg);
+  }
+  return res;
+}
+async function fetchConfig(){
+  const res = await ghApi(`${API_BASE}/${repo}/contents/${DATA_PATH}?ref=${encodeURIComponent(branch)}`);
+  const json = await res.json();
+  const text = atob(json.content.replace(/\n/g, ""));
+  config = normalizeConfig(JSON.parse(text));
+  $("#topMeta").textContent = "已加载线上内容 · 保存后覆盖发布";
+}
+async function saveConfig(){
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(config, null, 2))));
+  let sha = null;
+  try{
+    const res = await ghApi(`${API_BASE}/${repo}/contents/${DATA_PATH}?ref=${encodeURIComponent(branch)}`);
+    const json = await res.json();
+    sha = json.sha || null;
+  }catch(e){ sha = null; }
+  const payload = { message:"更新相册内容 · " + new Date().toISOString(), content, branch };
+  if(sha) payload.sha = sha;
+  await ghApi(`${API_BASE}/${repo}/contents/${DATA_PATH}`, {
+    method: sha ? "PUT" : "POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+/* ============ 渲染编辑面板 ============ */
+const chapterList = $("#chapterList");
+function createPhotoRow(photo, ci, pi){
+  const row = document.createElement("div");
+  row.className = "photo-row";
+  const image = document.createElement("img");
+  image.className = "photo-thumb"; image.src = photo.src || ""; image.alt = photo.note || "";
+  const right = document.createElement("div");
+  const field = document.createElement("label");
+  field.className = "field"; field.textContent = "备注";
+  const note = document.createElement("textarea");
+  note.value = photo.note || "";
+  note.dataset.bind = "photoNote"; note.dataset.chapter = String(ci); note.dataset.photo = String(pi);
+  field.append(note);
+  const tools = document.createElement("div");
+  tools.className = "photo-row-tools";
+  const up = document.createElement("button"); up.type = "button"; up.className = "mini-btn"; up.textContent = "上移";
+  up.dataset.action = "photoUp"; up.dataset.chapter = String(ci); up.dataset.photo = String(pi);
+  const down = document.createElement("button"); down.type = "button"; down.className = "mini-btn"; down.textContent = "下移";
+  down.dataset.action = "photoDown"; down.dataset.chapter = String(ci); down.dataset.photo = String(pi);
+  const del = document.createElement("button"); del.type = "button"; del.className = "mini-btn"; del.textContent = "删除";
+  del.dataset.action = "photoDelete"; del.dataset.chapter = String(ci); del.dataset.photo = String(pi);
+  tools.append(up, down, del);
+  right.append(field, tools);
+  row.append(image, right);
+  return row;
+}
+function createChapterCard(chapter, ci){
+  const card = document.createElement("div");
+  card.className = "chapter-card";
+  const cardHead = document.createElement("div");
+  cardHead.className = "chapter-card-head";
+  const label = document.createElement("span");
+  label.textContent = `章节 ${String(ci + 1).padStart(2, "0")}`;
+  const delBtn = document.createElement("button");
+  delBtn.type = "button"; delBtn.className = "mini-btn"; delBtn.textContent = "删除章节";
+  delBtn.dataset.action = "chapterDelete"; delBtn.dataset.chapter = String(ci);
+  cardHead.append(label, delBtn);
+  const title = document.createElement("input"); title.type = "text"; title.value = chapter.title || ""; title.placeholder = "章节标题";
+  title.dataset.bind = "chapterTitle"; title.dataset.chapter = String(ci);
+  const subtitle = document.createElement("input"); subtitle.type = "text"; subtitle.value = chapter.subtitle || ""; subtitle.placeholder = "章节副标题";
+  subtitle.dataset.bind = "chapterSubtitle"; subtitle.dataset.chapter = String(ci);
+  const photoList = document.createElement("div");
+  photoList.className = "photo-list";
+  chapter.photos.forEach((photo, pi) => photoList.append(createPhotoRow(photo, ci, pi)));
+  const uploadLabel = document.createElement("label");
+  uploadLabel.className = "upload-btn"; uploadLabel.textContent = "上传照片";
+  const uploadInput = document.createElement("input");
+  uploadInput.type = "file"; uploadInput.accept = "image/*"; uploadInput.multiple = true;
+  uploadInput.dataset.chapter = String(ci);
+  uploadLabel.append(uploadInput);
+  card.append(cardHead, title, subtitle, photoList, uploadLabel);
+  return card;
+}
+function renderEditor(){
+  $("#titleInput").value = config.meta.title || "";
+  $("#quoteInput").value = config.meta.quote || "";
+  $("#coverInput").value = config.meta.coverImage || "";
+  $("#signatureInput").value = config.meta.signature || "";
+  $("#dateInput").value = config.meta.date || "";
+  $("#musicInput").value = config.music.url || "";
+  $("#volumeInput").value = String(config.music.volume || .35);
+  chapterList.replaceChildren();
+  config.chapters.forEach((chapter, ci) => chapterList.append(createChapterCard(chapter, ci)));
+}
+/* ============ 交互：文本编辑、结构变化、上传 ============ */
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  const bind = t.dataset.bind;
+  if(!bind) return;
+  const v = t.value;
+  if(bind === "title") config.meta.title = v;
+  if(bind === "quote") config.meta.quote = v;
+  if(bind === "cover") config.meta.coverImage = v;
+  if(bind === "signature") config.meta.signature = v;
+  if(bind === "date") config.meta.date = v;
+  if(bind === "volume") config.music.volume = clampNumber(v, 0, 1);
+  if(bind === "chapterTitle") config.chapters[Number(t.dataset.chapter)].title = v;
+  if(bind === "chapterSubtitle") config.chapters[Number(t.dataset.chapter)].subtitle = v;
+  if(bind === "photoNote") config.chapters[Number(t.dataset.chapter)].photos[Number(t.dataset.photo)].note = v;
+});
+document.addEventListener("input", (e) => {
+  if(e.target.id === "musicInput") config.music.url = e.target.value;
+});
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-action]");
+  if(!btn) return;
+  const action = btn.dataset.action;
+  const ci = Number(btn.dataset.chapter);
+  const pi = Number(btn.dataset.photo);
+  const chapter = config.chapters[ci];
+  if(chapter === undefined) return;
+  if(action === "chapterDelete"){ config.chapters.splice(ci, 1); }
+  if(action === "photoDelete"){ chapter.photos.splice(pi, 1); }
+  if(action === "photoUp" && pi > 0){ const [photo] = chapter.photos.splice(pi, 1); chapter.photos.splice(pi - 1, 0, photo); }
+  if(action === "photoDown" && pi < chapter.photos.length - 1){ const [photo] = chapter.photos.splice(pi, 1); chapter.photos.splice(pi + 1, 0, photo); }
+  renderEditor();
+});
+document.addEventListener("change", (e) => {
+  if(e.target.matches('input[type="file"][data-chapter]')) handleUpload(e.target);
+});
+$("#addChapterBtn").addEventListener("click", () => {
+  config.chapters.push({ title:"新章节", subtitle:"写一点当时的天气或心情。", photos:[] });
+  renderEditor();
+});
+/* ============ 图片上传：压缩后转 base64 存进 data.json ============ */
+async function compressImage(file, maxWidth = 1600, quality = .82){
+  let bitmap;
+  try{ bitmap = await createImageBitmap(file); }
+  catch(error){
+    return await new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = objectUrl;
+    });
+  }
+  const scale = Math.min(1, maxWidth / bitmap.width);
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(bitmap.width * scale);
+  cv.height = Math.round(bitmap.height * scale);
+  const ctx = cv.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, cv.width, cv.height);
+  return cv.toDataURL("image/jpeg", quality);
+}
+async function handleUpload(input){
+  const ci = Number(input.dataset.chapter);
+  const chapter = config.chapters[ci];
+  if(!chapter || !input.files || !input.files.length) return;
+  setStatus("正在处理图片…");
+  for(const file of Array.from(input.files)){
+    try{
+      const dataUrl = await compressImage(file);
+      chapter.photos.push({ src:dataUrl, note:"" });
+    }catch(error){
+      setStatus("有一张图片无法读取，请换一张。", true);
+    }
+  }
+  input.value = "";
+  renderEditor();
+  setStatus("照片已加入列表，点击「保存并发布」后才会同步到线上。");
+}
+/* ============ 连接仓库、保存、重置 ============ */
+const LS_TOKEN = "albumAdminToken";
+const LS_REPO = "albumAdminRepo";
+const LS_BRANCH = "albumAdminBranch";
+function restoreLocal(){
+  token = localStorage.getItem(LS_TOKEN) || "";
+  repo = localStorage.getItem(LS_REPO) || OWNER_REPO_DEFAULT;
+  branch = localStorage.getItem(LS_BRANCH) || BRANCH_DEFAULT;
+  $("#tokenInput").value = token;
+  $("#repoInput").value = repo;
+  $("#branchInput").value = branch;
+}
+$("#connectBtn").addEventListener("click", async () => {
+  token = $("#tokenInput").value.trim();
+  repo = $("#repoInput").value.trim() || OWNER_REPO_DEFAULT;
+  branch = $("#branchInput").value.trim() || BRANCH_DEFAULT;
+  localStorage.setItem(LS_TOKEN, token);
+  localStorage.setItem(LS_REPO, repo);
+  localStorage.setItem(LS_BRANCH, branch);
+  if(!token){ setSetupStatus("请填写 GitHub Token。", true); return; }
+  setSetupStatus("正在连接并加载…");
+  try{
+    await fetchConfig();
+    $("#setup").style.display = "none";
+    $("#editor").style.display = "block";
+    renderEditor();
+    setSetupStatus("连接成功。");
+  }catch(error){
+    if(error.message.indexOf("404") !== -1){
+      /* data.json 还不存在 → 用默认配置新建一个编辑起点 */
+      config = deepClone(DEFAULT_CONFIG);
+      $("#setup").style.display = "none";
+      $("#editor").style.display = "block";
+      renderEditor();
+      setSetupStatus("仓库还没有 data.json，已载入示例内容，保存后会自动创建。");
+    }else{
+      setSetupStatus("连接失败：" + error.message, true);
+    }
+  }
+});
+$("#saveBtn").addEventListener("click", async () => {
+  if(!config){ setStatus("请先连接仓库。", true); return; }
+  if(!token){ setStatus("缺少 Token，请重新连接。", true); return; }
+  setStatus("正在保存并发布…");
+  try{
+    await saveConfig();
+    setStatus("发布成功！前端访问者最多 1 分钟内自动看到新内容。");
+  }catch(error){
+    setStatus("保存失败：" + error.message, true);
+  }
+});
+$("#reloadBtn").addEventListener("click", async () => {
+  if(!token){ setStatus("请先连接仓库。", true); return; }
+  setStatus("正在重新加载线上内容…");
+  try{
+    await fetchConfig();
+    renderEditor();
+    setStatus("已重新加载线上内容。");
+  }catch(error){ setStatus("重新加载失败：" + error.message, true); }
+});
+$("#resetBtn").addEventListener("click", () => {
+  if(!confirm("确定用示例内容替换当前编辑内容吗？这一操作不会立即发布，需再点击「保存并发布」。")) return;
+  config = deepClone(DEFAULT_CONFIG);
+  renderEditor();
+  setStatus("已替换为示例内容，点击「保存并发布」生效。");
+});
+(function init(){
+  restoreLocal();
+  /* 若本地已有 Token 且有内容，自动进入编辑态 */
+  if(token && repo){
+    (async () => {
+      try{
+        await fetchConfig();
+        $("#setup").style.display = "none";
+        $("#editor").style.display = "block";
+        renderEditor();
+      }catch(error){
+        /* 连接失败时停留在配置页，让用户重新连接 */
+      }
+    })();
+  }
+})();
+</script>
+<!--
+===================== 后台使用说明 =====================
+【后台地址】
+https://standcun.github.io/memory-film-album/admin.html
+
+【首次使用】
+1. 在这里粘贴你的 GitHub Token（需要 repo 权限，即 ghp_ 系列令牌）。
+2. 仓库已填好 STandCUN/memory-film-album，分支 main，点击「连接并载入内容」。
+3. 载入后即可编辑，改完点「保存并发布」。
+
+【保存与同步】
+- 「保存并发布」会把相册内容提交覆盖到仓库的 data.json。
+- 前端页面每 60 秒自动刷新一次，所以后台保存后，访问者不手动刷新也能在 1 分钟内看到新内容。
+- 上传的照片会压缩到最大宽度 1600px 的 JPEG，并以 base64 存进 data.json，所以大图片会增大该文件体积。
+
+【权限提示】
+- Token 只保存在你当前浏览器的 localStorage，不会上传到其他服务。
+- 建议使用一个只授权该仓库写权限、并在使用后及时撤销的 Token 更安全。
+-->
+</body>
+</html>
