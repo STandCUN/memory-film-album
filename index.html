@@ -154,6 +154,107 @@ button{ border:0; background:transparent; color:inherit; font:inherit; cursor:po
   </div>
 </div>
 <script>
+/* 远程数据源：data.json 位于同目录，前端每 60 秒轮询刷新 */
+const CONFIG_URL = "./data.json";
+const REFRESH_MS = 60000;
+/* =========================================================
+   默认示例配置
+   这里使用稳定的 Picsum 示例图，用户可在后台全部替换。
+   ========================================================= */
+const DEFAULT_CONFIG = {
+  meta:{
+    title:"折叠的旧时光",
+    quote:"把散落的片段，折成一页页温热的纸。",
+    coverImage:"https://picsum.photos/id/1018/1800/2400",
+    signature:"—— 写给那年的我们",
+    date:"2026 · 10 · 15"
+  },
+  music:{
+    url:"",
+    volume:.35
+  },
+  chapters:[
+    {
+      title:"一 · 启程",
+      subtitle:"风把云压得很低，世界刚刚醒过来。",
+      photos:[
+        { src:"https://picsum.photos/id/1018/1200/1500", note:"那天路很长，光却走得很慢。" },
+        { src:"https://picsum.photos/id/1011/1200/1600", note:"水面安静得像没有说完的话。" }
+      ]
+    },
+    {
+      title:"二 · 途经",
+      subtitle:"旧街、长影、细小的声音。",
+      photos:[
+        { src:"https://picsum.photos/id/1027/1200/900", note:"午后的光，轻轻落在肩上。" },
+        { src:"https://picsum.photos/id/1043/1200/1200", note:"砖缝里长出了细小的草。" },
+        { src:"https://picsum.photos/id/1050/1200/1500", note:"有人递来一颗很甜的杏。" }
+      ]
+    },
+    {
+      title:"三 · 归处",
+      subtitle:"黄昏把街道染成牛皮纸的颜色。",
+      photos:[
+        { src:"https://picsum.photos/id/1035/1200/1350", note:"我们坐在台阶上，谁也没有说话。" },
+        { src:"https://picsum.photos/id/1036/1200/900", note:"风停下来的时候，时间也慢了一点。" }
+      ]
+    }
+  ]
+};
+
+/* 工具函数 */
+const $ = (selector) => document.querySelector(selector);
+function deepClone(value){ return JSON.parse(JSON.stringify(value)); }
+function clampNumber(value, min, max){
+  const num = Number(value);
+  if(Number.isNaN(num)) return min;
+  return Math.min(max, Math.max(min, num));
+}
+function normalizeConfig(input){
+  const base = deepClone(DEFAULT_CONFIG);
+  if(!input || typeof input !== "object") return base;
+  const output = base;
+  if(input.meta && typeof input.meta === "object") output.meta = { ...base.meta, ...input.meta };
+  if(input.music && typeof input.music === "object"){
+    output.music = { ...base.music, ...input.music };
+    output.music.volume = clampNumber(output.music.volume, 0, 1);
+  }
+  if(Array.isArray(input.chapters)){
+    output.chapters = input.chapters
+      .filter((chapter) => chapter && typeof chapter === "object")
+      .map((chapter) => ({
+        title:String(chapter.title || "未命名章节"),
+        subtitle:String(chapter.subtitle || ""),
+        photos:Array.isArray(chapter.photos)
+          ? chapter.photos.filter((photo) => photo && typeof photo === "object")
+              .map((photo) => ({ src:String(photo.src || ""), note:String(photo.note || "") }))
+          : []
+      }));
+  }
+  return output;
+}
+
+/* 全局状态与本地自动保存 */
+let state = normalizeConfig(deepClone(DEFAULT_CONFIG));
+const STORAGE_KEY = "memoryFilmAlbumConfig";
+let persistTimer = null;
+function persistState(){
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(error){
+      /* 图片转 base64 后可能超过本地存储限额，导出 JSON 仍可用 */
+      setPanelStatus("本地自动保存失败，建议导出 JSON 备份。");
+    }
+  }, 320);
+}
+
+/* =========================================================
+   相册渲染
+   使用 DOM API 创建内容，避免用户输入被当作 HTML 执行。
+   ========================================================= */
+const albumEl = $("#album");
 function applyMeta(){
   const m = state.meta;
   $("#coverImage").src = m.coverImage || "";
@@ -231,6 +332,104 @@ function observeReveals(){
   }, { rootMargin:"0px 0px -8% 0px", threshold:.12 });
   document.querySelectorAll(".photo-card").forEach((card) => revealObserver.observe(card));
 }
+let revealObserver = null;
+
+/* =========================================================
+   Lightbox 大图预览
+   点击照片全屏查看，支持关闭(Esc/点空白)、上/下一张。
+   预览打开时暂停新增爱心，避免遮挡弹窗。
+   ========================================================= */
+const lightbox = $("#lightbox");
+const lightboxImage = $("#lightboxImage");
+const lightboxCaption = $("#lightboxCaption");
+let currentPhoto = { chapter:0, photo:0 };
+let heartSpawningAllowed = true;
+function flattenPhotos(){
+  const list = [];
+  state.chapters.forEach((chapter, chapterIndex) => {
+    chapter.photos.forEach((photo, photoIndex) => list.push({ photo, chapterIndex, photoIndex }));
+  });
+  return list;
+}
+function openLightbox(chapterIndex, photoIndex){
+  const photo = state.chapters[chapterIndex]?.photos[photoIndex];
+  if(!photo) return;
+  currentPhoto = { chapter:chapterIndex, photo:photoIndex };
+  lightboxImage.src = photo.src || "";
+  lightboxImage.alt = photo.note || "回忆照片";
+  lightboxCaption.textContent = photo.note || "";
+  lightbox.classList.add("open");
+  lightbox.setAttribute("aria-hidden", "false");
+  document.body.classList.add("no-scroll");
+  heartSpawningAllowed = false;
+  $("#lightboxClose").focus();
+}
+function closeLightbox(){
+  lightbox.classList.remove("open");
+  lightbox.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("no-scroll");
+  heartSpawningAllowed = true;
+}
+function stepLightbox(step){
+  const list = flattenPhotos();
+  if(!list.length) return;
+  const index = list.findIndex((item) => item.chapterIndex === currentPhoto.chapter && item.photoIndex === currentPhoto.photo);
+  const next = list[(index + step + list.length) % list.length];
+  openLightbox(next.chapterIndex, next.photoIndex);
+}
+$("#lightboxClose").addEventListener("click", closeLightbox);
+$("#lightboxPrev").addEventListener("click", () => stepLightbox(-1));
+$("#lightboxNext").addEventListener("click", () => stepLightbox(1));
+lightbox.addEventListener("click", (event) => { if(event.target === lightbox) closeLightbox(); });
+document.addEventListener("keydown", (event) => {
+  if(!lightbox.classList.contains("open")) return;
+  if(event.key === "Escape") closeLightbox();
+  if(event.key === "ArrowLeft") stepLightbox(-1);
+  if(event.key === "ArrowRight") stepLightbox(1);
+});
+albumEl.addEventListener("click", (event) => {
+  const button = event.target.closest(".photo-button");
+  if(!button) return;
+  openLightbox(Number(button.dataset.chapter), Number(button.dataset.photo));
+});
+
+/* =========================================================
+   背景音乐
+   提供播放/暂停按钮与音量调节。
+   ========================================================= */
+const audio = $("#albumAudio");
+const musicToggle = $("#musicToggle");
+const musicVolume = $("#musicVolume");
+function applyMusic(){
+  musicVolume.value = String(state.music.volume);
+  audio.volume = clampNumber(state.music.volume, 0, 1);
+  if(state.music.url) audio.src = state.music.url;
+  else{ audio.pause(); audio.removeAttribute("src"); }
+  musicToggle.textContent = "♪";
+  musicToggle.setAttribute("aria-pressed", "false");
+}
+musicToggle.addEventListener("click", async () => {
+  if(!state.music.url){
+    alert("请先在后台管理页(admin.html)粘贴音乐链接。");
+    return;
+  }
+  if(audio.paused){
+    try{
+      await audio.play();
+      musicToggle.textContent = "❚❚";
+      musicToggle.setAttribute("aria-pressed", "true");
+    }catch(error){ alert("浏览器暂时无法播放该音频链接。"); }
+  }else{
+    audio.pause();
+    musicToggle.textContent = "♪";
+    musicToggle.setAttribute("aria-pressed", "false");
+  }
+});
+musicVolume.addEventListener("input", () => {
+  state.music.volume = clampNumber(musicVolume.value, 0, 1);
+  audio.volume = state.music.volume;
+});
+
 /* 爱心粒子：颜色仅牛皮浅棕/米白，数量上限12、间隔2.5s、生命6~12s，canvas 渲染，失焦暂停 */
 const canvas = $("#heartCanvas");
 const context = canvas.getContext("2d");
