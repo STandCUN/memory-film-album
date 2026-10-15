@@ -1,221 +1,828 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>回忆相册后台 · 编辑</title>
+<meta name="theme-color" content="#F7F3ED">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* =====================================================
+   主题变量：与前端相册完全一致
+   ===================================================== */
+:root{
+  color-scheme: light;
+  --ink: #5C4B42;
+  --kraft: #BFA89A;
+  --paper: #F7F3ED;
+  --mist: #DCD6CF;
+  --slate: #443A34;
+  --ink-72: rgba(92, 75, 66, .72);
+  --ink-58: rgba(92, 75, 66, .58);
+  --ink-38: rgba(92, 75, 66, .38);
+  --ink-18: rgba(92, 75, 66, .18);
+  --ink-08: rgba(92, 75, 66, .08);
+  --shadow-soft: rgba(92, 75, 66, .09);
+  --shadow-lift: rgba(92, 75, 66, .14);
+  --danger: #8C4B3E;
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  --font-sans: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --radius-outer: 18px;
+  --radius-inner: 10px;
+  --radius-pill: 999px;
+}
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:15px;
+  line-height:1.6;
+  background-color:var(--paper);
+  background-image:
+    radial-gradient(circle at 14% 8%, var(--ink-04, rgba(92,75,66,.04)) 0, transparent 40%),
+    radial-gradient(circle at 88% 92%, rgba(92,75,66,.05) 0, transparent 42%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='paperGrain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23paperGrain)' opacity='.032'/%3E%3C/svg%3E");
+}
+h1, h2, h3{
+  margin:0;
+  font-family:var(--font-serif);
+  font-weight:500;
+  letter-spacing:.05em;
+}
+p{ margin:0; }
+button{ font:inherit; cursor:pointer; }
+input, textarea{
+  font:inherit;
+  color:var(--slate);
+  background:var(--paper);
+  border:1px solid var(--ink-18);
+  border-radius:var(--radius-inner);
+  padding:9px 12px;
+  outline:none;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+input:focus, textarea:focus{
+  border-color:var(--kraft);
+  box-shadow:0 0 0 3px rgba(191, 168, 154, .22);
+}
+textarea{ resize:vertical; min-height:64px; }
+input[type="range"]{ accent-color:var(--kraft); border:0; padding:0; box-shadow:none; }
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:100;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:14px 22px;
+  background:var(--paper);
+  border-bottom:1px solid var(--ink-18);
+}
+.topbar-title h1{
+  font-size:1.25rem;
+  letter-spacing:.12em;
+}
+.topbar-title p{
+  margin-top:2px;
+  font-size:.76rem;
+  font-weight:300;
+  letter-spacing:.06em;
+  color:var(--ink-58);
+}
+.topbar-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:flex-end;
+}
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-height:38px;
+  padding:8px 17px;
+  border-radius:var(--radius-pill);
+  border:1px solid transparent;
+  font-size:.84rem;
+  letter-spacing:.04em;
+  text-decoration:none;
+  transition:transform .2s ease, box-shadow .2s ease, filter .2s ease, background .2s ease;
+}
+.btn:hover{ transform:translateY(-1px); }
+.btn-primary{
+  background:var(--kraft);
+  color:var(--paper);
+  box-shadow:0 10px 22px var(--shadow-lift);
+}
+.btn-ghost{
+  background:transparent;
+  color:var(--ink);
+  border-color:var(--ink-18);
+}
+.btn-danger{
+  background:transparent;
+  color:var(--danger);
+  border-color:rgba(140, 75, 62, .35);
+}
+.page{
+  max-width:980px;
+  margin:0 auto;
+  padding:34px 20px 90px;
+}
+.setup{ margin-bottom:20px; }
+.section{ margin:0 0 36px; }
+.section-head{
+  margin:0 0 14px;
+  display:grid;
+  gap:4px;
+}
+.section-head h2, .section-head h3{
+  font-size:1.3rem;
+  letter-spacing:.08em;
+}
+.section-head p{
+  font-size:.8rem;
+  font-weight:300;
+  color:var(--ink-58);
+}
+.sheet{
+  background:var(--paper);
+  border:1px solid var(--ink-08);
+  border-radius:var(--radius-outer);
+  box-shadow:0 14px 32px var(--shadow-soft);
+  padding:24px;
+}
+.sheet + .sheet{ margin-top:16px; }
+.field-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.field{
+  display:grid;
+  gap:6px;
+  margin:0 0 14px;
+  font-size:.82rem;
+  color:var(--ink-72);
+  letter-spacing:.02em;
+}
+.field:last-child{ margin-bottom:0; }
+.field-row .field{ margin-bottom:0; }
+.hint{
+  margin-top:10px;
+  font-size:.77rem;
+  font-weight:300;
+  color:var(--ink-58);
+}
+.upload-line{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:12px;
+  margin-top:4px;
+}
+.upload-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 15px;
+  border:1px dashed var(--kraft);
+  border-radius:var(--radius-pill);
+  font-size:.8rem;
+  color:var(--ink);
+  background:rgba(191, 168, 154, .10);
+  cursor:pointer;
+  transition:background .2s ease;
+}
+.upload-btn:hover{ background:rgba(191, 168, 154, .18); }
+.file-hidden{
+  position:absolute;
+  width:1px;
+  height:1px;
+  opacity:0;
+  overflow:hidden;
+}
+.chapter-card{
+  background:var(--paper);
+  border:1px solid var(--ink-08);
+  border-radius:var(--radius-outer);
+  box-shadow:0 12px 28px var(--shadow-soft);
+  padding:22px;
+  margin-bottom:22px;
+}
+.chapter-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+.chapter-no{
+  font-family:var(--font-serif);
+  font-size:.9rem;
+  letter-spacing:.24em;
+  color:var(--kraft);
+}
+.mini-btn{
+  padding:5px 11px;
+  border:1px solid var(--ink-18);
+  border-radius:var(--radius-pill);
+  background:transparent;
+  color:var(--ink);
+  font-size:.74rem;
+  line-height:1.2;
+}
+.mini-btn:hover{ background:rgba(191, 168, 154, .14); }
+.mini-btn.danger{ color:var(--danger); border-color:rgba(140, 75, 62, .35); }
+.mini-tools{ display:flex; flex-wrap:wrap; gap:8px; }
+.photo-list{ display:grid; gap:14px; margin:16px 0; }
+.photo-row{
+  display:grid;
+  grid-template-columns:96px 1fr;
+  gap:16px;
+  align-items:start;
+  padding:14px;
+  background:var(--paper);
+  border:1px solid var(--ink-08);
+  border-radius:12px;
+}
+.photo-thumb{
+  width:96px;
+  height:112px;
+  object-fit:cover;
+  border:5px solid #FFFDF9;
+  border-radius:8px;
+  box-shadow:0 8px 18px var(--shadow-soft);
+  background:var(--mist);
+}
+.photo-main{ display:grid; gap:10px; min-width:0; }
+.photo-main .field{ margin:0; }
+.add-btn{
+  display:block;
+  width:100%;
+  padding:13px;
+  border:1px dashed var(--kraft);
+  border-radius:var(--radius-outer);
+  background:rgba(191, 168, 154, .08);
+  color:var(--ink);
+  font-family:var(--font-serif);
+  letter-spacing:.1em;
+}
+.add-btn:hover{ background:rgba(191, 168, 154, .16); }
+.music-preview{
+  width:100%;
+  height:38px;
+  margin-top:10px;
+  accent-color:var(--kraft);
+}
+.volume-line{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:center;
+}
+.status{
+  display:inline-block;
+  margin-top:14px;
+  padding:7px 13px;
+  border-radius:var(--radius-pill);
+  background:rgba(191, 168, 154, .14);
+  color:var(--ink);
+  font-size:.78rem;
+  letter-spacing:.03em;
+}
+.status.error{ background:rgba(140, 75, 62, .12); color:var(--danger); }
+/* ---------- 实时预览浮层 ---------- */
+.preview-overlay{
+  position:fixed;
+  inset:0;
+  z-index:900;
+  display:none;
+  background:rgba(68, 58, 52, .58);
+}
+.preview-shell{
+  position:absolute;
+  inset:24px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:var(--paper);
+  border-radius:var(--radius-outer);
+  box-shadow:0 24px 60px rgba(68, 58, 52, .30);
+}
+.preview-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 16px;
+  border-bottom:1px solid var(--ink-18);
+}
+.preview-head strong{
+  font-family:var(--font-serif);
+  font-weight:500;
+  font-size:.92rem;
+  letter-spacing:.06em;
+  color:var(--ink);
+}
+.preview-actions{ display:flex; flex-wrap:wrap; gap:8px; }
+#previewFrame{ flex:1; width:100%; border:0; background:var(--paper); }
 @media (max-width: 640px){
   .topbar{ flex-direction:column; align-items:stretch; }
   .topbar-actions{ justify-content:flex-start; }
   .field-row{ grid-template-columns:1fr; }
+  .page{ padding:24px 14px 70px; }
+  .sheet, .chapter-card{ padding:16px; }
+  .photo-row{ grid-template-columns:76px 1fr; padding:12px; }
+  .photo-thumb{ width:76px; height:88px; }
+  .preview-shell{ inset:8px; }
+  .preview-head{ flex-direction:column; align-items:flex-start; }
+}
+@media (prefers-reduced-motion: reduce){
+  *{ transition-duration:.01ms !important; animation-duration:.01ms !important; }
 }
 </style>
 </head>
 <body>
 <div class="topbar">
   <div class="topbar-title">
-    <h1>相册后台</h1>
+    <h1>回忆相册后台</h1>
     <p id="topMeta">本地编辑 · 保存后同步到线上</p>
   </div>
   <div class="topbar-actions">
+    <button id="previewBtn" class="btn btn-ghost" type="button">实时预览</button>
     <button id="saveBtn" class="btn btn-primary" type="button">保存并发布</button>
     <button id="reloadBtn" class="btn btn-ghost" type="button">重新加载</button>
     <button id="resetBtn" class="btn btn-danger" type="button">恢复示例</button>
   </div>
 </div>
 
-<!-- 首次使用：填写 GitHub Token -->
-<section id="setup" class="setup">
-  <h2>连接你的 GitHub 仓库</h2>
-  <p>在这个页面做的修改，会保存到你的相册仓库的 data.json 文件里，这样前端所有访客都能看到。Token 只保存在你当前浏览器本地，不会上传到其他地方。</p>
-  <div class="card">
-    <label class="field">GitHub Token（需要 repo 权限，即上面的 ghp_ 系列令牌）
-      <input id="tokenInput" type="password" placeholder="ghp_..." autocomplete="off">
-    </label>
-    <label class="field">仓库
-      <input id="repoInput" type="text" value="STandCUN/memory-film-album">
-    </label>
-    <label class="field">分支
-      <input id="branchInput" type="text" value="main">
-    </label>
-    <button id="connectBtn" class="btn btn-primary" type="button">连接并载入内容</button>
-    <p id="setupStatus" class="status"></p>
-  </div>
-</section>
-
-<!-- 编辑面板 -->
-<section id="editor" class="setup" style="display:none;">
-  <div class="section">
-    <h3>基础信息</h3>
-    <div class="card">
-      <label class="field">相册标题<input id="titleInput" type="text"></label>
-      <label class="field">开篇引言<textarea id="quoteInput"></textarea></label>
-      <label class="field">封面图片链接<input id="coverInput" type="text" placeholder="https://..."></label>
+<main class="page">
+  <!-- 首次使用：连接 GitHub 仓库 -->
+  <section id="setup" class="setup">
+    <div class="section-head">
+      <h2>连接你的 GitHub 仓库</h2>
+      <p>后台修改会写入相册仓库的 data.json，前端访客会自动看到。Token 只保存在当前浏览器本地。</p>
+    </div>
+    <div class="sheet">
+      <label class="field">GitHub Token（需要 repo 权限，即 ghp_ 系列令牌）
+        <input id="tokenInput" type="password" placeholder="ghp_..." autocomplete="off">
+      </label>
       <div class="field-row">
-        <label class="field">落款<input id="signatureInput" type="text"></label>
-        <label class="field">纪念日期<input id="dateInput" type="text"></label>
+        <label class="field">仓库
+          <input id="repoInput" type="text" value="STandCUN/memory-film-album">
+        </label>
+        <label class="field">分支
+          <input id="branchInput" type="text" value="main">
+        </label>
+      </div>
+      <button id="connectBtn" class="btn btn-primary" type="button">连接并载入内容</button>
+      <p id="setupStatus" class="status"></p>
+    </div>
+  </section>
+
+  <!-- 编辑面板 -->
+  <section id="editor" class="setup" style="display:none;">
+    <div class="section">
+      <div class="section-head">
+        <h3>基础信息</h3>
+        <p>相册标题、封面与落款。</p>
+      </div>
+      <div class="sheet">
+        <label class="field">相册标题<input id="titleInput" type="text"></label>
+        <label class="field">开篇引言<textarea id="quoteInput"></textarea></label>
+        <label class="field">封面图片链接<input id="coverInput" type="text" placeholder="https://..."></label>
+        <div class="upload-line">
+          <span class="hint" style="margin:0;">也可以直接从本地上传封面：</span>
+          <label class="upload-btn">上传封面
+            <input id="coverFileInput" class="file-hidden" type="file" accept="image/*">
+          </label>
+        </div>
+        <div class="field-row" style="margin-top:16px;">
+          <label class="field">落款<input id="signatureInput" type="text"></label>
+          <label class="field">纪念日期<input id="dateInput" type="text"></label>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="section">
-    <h3>背景音乐</h3>
-    <div class="card">
-      <label class="field">音乐链接<input id="musicInput" type="text" placeholder="https://... .mp3 / .m4a / .ogg"></label>
-      <label class="field">默认音量
-        <input id="volumeInput" type="range" min="0" max="1" step="0.01">
-      </label>
-      <p class="hint">建议使用可长期访问的音频直链。浏览器可能在用户首次点击后才允许出声。</p>
+    <div class="section">
+      <div class="section-head">
+        <h3>背景音乐</h3>
+        <p>粘贴音乐直链，或直接从本地上传音乐文件。</p>
+      </div>
+      <div class="sheet">
+        <label class="field">音乐链接<input id="musicInput" type="text" placeholder="https://... .mp3 / .m4a / .ogg"></label>
+        <div class="upload-line">
+          <label class="upload-btn">上传音乐
+            <input id="musicFileInput" class="file-hidden" type="file" accept="audio/*,.mp3,.m4a,.ogg,.wav,.flac">
+          </label>
+          <span class="hint" style="margin:0;">上传后会自动存入仓库 music 文件夹，并填入上面的链接。</span>
+        </div>
+        <audio id="musicPreview" class="music-preview" controls preload="none"></audio>
+        <div class="volume-line" style="margin-top:14px;">
+          <input id="volumeInput" type="range" min="0" max="1" step="0.01">
+          <span id="volumeLabel" class="hint">35%</span>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="section">
-    <h3>章节</h3>
-    <div id="chapterList"></div>
-    <button id="addChapterBtn" class="add-btn" type="button">＋ 新增章节</button>
-  </div>
+    <div class="section">
+      <div class="section-head">
+        <h3>回忆章节</h3>
+        <p>照片会直接上传到仓库 photos 文件夹；也可以粘贴图片直链。</p>
+      </div>
+      <div id="chapterList"></div>
+      <button id="addChapterBtn" class="add-btn" type="button">＋ 新增章节</button>
+    </div>
 
-  <p id="status" class="status"></p>
-</section>
+    <p id="status" class="status"></p>
+  </section>
+</main>
+
+<!-- 实时预览浮层：iframe 内是前端相册，编辑内容实时同步 -->
+<div id="previewOverlay" class="preview-overlay">
+  <div class="preview-shell">
+    <div class="preview-head">
+      <strong>实时预览 · 当前未保存的编辑内容</strong>
+      <div class="preview-actions">
+        <button id="previewRefresh" class="btn btn-ghost" type="button">刷新</button>
+        <a class="btn btn-ghost" href="index.html" target="_blank">新窗口打开</a>
+        <button id="previewClose" class="btn btn-primary" type="button">关闭预览</button>
+      </div>
+    </div>
+    <iframe id="previewFrame" src="index.html?preview=1" title="相册实时预览"></iframe>
+  </div>
+</div>
 
 <script>
 /* =========================================================
-   配置：相册后台编辑页。
-   读取/写入仓库 data.json（GitHub Contents API）。
+   相册后台：可视化编辑 + 直链上传 + 实时预览。
+   内容写入仓库 data.json，素材写入 photos/ 与 music/ 文件夹。
    ========================================================= */
-const $ = (s) => document.querySelector(s);
+const $ = (selector) => document.querySelector(selector);
+const API_BASE = "https://api.github.com/repos";
 const OWNER_REPO_DEFAULT = "STandCUN/memory-film-album";
 const BRANCH_DEFAULT = "main";
 const DATA_PATH = "data.json";
+
 let repo = OWNER_REPO_DEFAULT;
 let branch = BRANCH_DEFAULT;
 let token = "";
 let config = null;
 
-function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
-function clampNumber(v, min, max){ const n = Number(v); return Number.isNaN(n) ? min : Math.min(max, Math.max(min, n)); }
-function setStatus(msg, isError){ const el = $("#status"); if(el){ el.textContent = msg || ""; el.className = "status" + (isError ? " error" : ""); } }
-function setSetupStatus(msg, isError){ const el = $("#setupStatus"); if(el){ el.textContent = msg || ""; el.className = "status" + (isError ? " error" : ""); } }
-/* 默认示例配置（当仓库还没有 data.json 时使用） */
+function deepClone(value){ return JSON.parse(JSON.stringify(value)); }
+function clampNumber(value, min, max){
+  const num = Number(value);
+  if(Number.isNaN(num)) return min;
+  return Math.min(max, Math.max(min, num));
+}
+function setStatus(msg, isError){
+  const el = $("#status");
+  if(el){ el.textContent = msg || ""; el.className = "status" + (isError ? " error" : ""); }
+}
+function setSetupStatus(msg, isError){
+  const el = $("#setupStatus");
+  if(el){ el.textContent = msg || ""; el.className = "status" + (isError ? " error" : ""); }
+}
+
+/* 默认示例配置（仓库还没有 data.json 时使用） */
 const DEFAULT_CONFIG = {
-  meta:{ title:"折叠的旧时光", quote:"把散落的片段，折成一页页温热的纸。", coverImage:"https://picsum.photos/id/1018/1800/2400", signature:"—— 写给那年的我们", date:"2026 · 10 · 15" },
-  music:{ url:"", volume:.35 },
-  chapters:[
-    { title:"一 · 启程", subtitle:"风把云压得很低，世界刚刚醒过来。", photos:[
-      { src:"https://picsum.photos/id/1018/1200/1500", note:"那天路很长，光却走得很慢。" },
-      { src:"https://picsum.photos/id/1011/1200/1600", note:"水面安静得像没有说完的话。" }
-    ]},
-    { title:"二 · 途经", subtitle:"旧街、长影、细小的声音。", photos:[
-      { src:"https://picsum.photos/id/1027/1200/900", note:"午后的光，轻轻落在肩上。" },
-      { src:"https://picsum.photos/id/1043/1200/1200", note:"砖缝里长出了细小的草。" },
-      { src:"https://picsum.photos/id/1050/1200/1500", note:"有人递来一颗很甜的杏。" }
-    ]},
-    { title:"三 · 归处", subtitle:"黄昏把街道染成牛皮纸的颜色。", photos:[
-      { src:"https://picsum.photos/id/1035/1200/1350", note:"我们坐在台阶上，谁也没有说话。" },
-      { src:"https://picsum.photos/id/1036/1200/900", note:"风停下来的时候，时间也慢了一点。" }
-    ]}
+  meta:{
+    title: "折叠的旧时光",
+    quote: "把散落的片段，折成一页页温热的纸。",
+    coverImage: "https://picsum.photos/id/1018/1800/2400",
+    signature: "—— 写给那年的我们",
+    date: "2026 · 10 · 15"
+  },
+  music: { url: "", volume: .35 },
+  chapters: [
+    {
+      title: "一 · 启程",
+      subtitle: "风把云压得很低，世界刚刚醒过来。",
+      photos: [
+        { src: "https://picsum.photos/id/1018/1200/1500", note: "那天路很长，光却走得很慢。" },
+        { src: "https://picsum.photos/id/1011/1200/1600", note: "水面安静得像没有说完的话。" }
+      ]
+    },
+    {
+      title: "二 · 途经",
+      subtitle: "旧街、长影、细小的声音。",
+      photos: [
+        { src: "https://picsum.photos/id/1027/1200/900", note: "午后的光，轻轻落在肩上。" },
+        { src: "https://picsum.photos/id/1043/1200/1200", note: "砖缝里长出了细小的草。" },
+        { src: "https://picsum.photos/id/1050/1200/1500", note: "有人递来一颗很甜的杏。" }
+      ]
+    },
+    {
+      title: "三 · 归处",
+      subtitle: "黄昏把街道染成牛皮纸的颜色。",
+      photos: [
+        { src: "https://picsum.photos/id/1035/1200/1350", note: "我们坐在台阶上，谁也没有说话。" },
+        { src: "https://picsum.photos/id/1036/1200/900", note: "风停下来的时候，时间也慢了一点。" }
+      ]
+    }
   ]
 };
+
 function normalizeConfig(input){
   const base = deepClone(DEFAULT_CONFIG);
   if(!input || typeof input !== "object") return base;
   const out = base;
-  if(input.meta && typeof input.meta === "object") out.meta = { ...base.meta, ...input.meta };
-  if(input.music && typeof input.music === "object"){ out.music = { ...base.music, ...input.music }; out.music.volume = clampNumber(out.music.volume, 0, 1); }
+  if(input.meta && typeof input.meta === "object"){
+    out.meta = { ...base.meta, ...input.meta };
+  }
+  if(input.music && typeof input.music === "object"){
+    out.music = { ...base.music, ...input.music };
+    out.music.volume = clampNumber(out.music.volume, 0, 1);
+  }
   if(Array.isArray(input.chapters)){
-    out.chapters = input.chapters.filter((c) => c && typeof c === "object").map((c) => ({
-      title:String(c.title || "未命名章节"), subtitle:String(c.subtitle || ""),
-      photos:Array.isArray(c.photos) ? c.photos.filter((p) => p && typeof p === "object").map((p) => ({ src:String(p.src || ""), note:String(p.note || "") })) : []
-    }));
+    out.chapters = input.chapters
+      .filter((chapter) => chapter && typeof chapter === "object")
+      .map((chapter) => ({
+        title: String(chapter.title || "未命名章节"),
+        subtitle: String(chapter.subtitle || ""),
+        photos: Array.isArray(chapter.photos)
+          ? chapter.photos
+              .filter((photo) => photo && typeof photo === "object")
+              .map((photo) => ({ src: String(photo.src || ""), note: String(photo.note || "") }))
+          : []
+      }));
   }
   return out;
 }
 
 /* ============ GitHub Contents API 封装 ============ */
-const API_BASE = "https://api.github.com/repos";
-async function ghApi(url, options = {}){
-  const headers = { Authorization:"Bearer " + token, "User-Agent":"admin", Accept:"application/vnd.github+json" };
-  const res = await fetch(url, { ...options, headers });
+async function ghApi(path, options = {}){
+  if(!token) throw new Error("尚未连接 GitHub，请先填写 Token。");
+  const headers = {
+    Authorization: "Bearer " + token,
+    "User-Agent": "memory-album-admin",
+    Accept: "application/vnd.github+json"
+  };
+  if(options.body) headers["Content-Type"] = "application/json";
+  const res = await fetch(`${API_BASE}/${repo}${path}`, { ...options, headers });
   if(!res.ok){
     let msg = `HTTP ${res.status}`;
-    try{ const j = await res.json(); if(j && j.message) msg += " — " + j.message; }catch(e){}
+    try{
+      const json = await res.json();
+      if(json && json.message) msg += " — " + json.message;
+    }catch(error){ /* 忽略响应解析失败 */ }
     throw new Error(msg);
   }
   return res;
 }
+
+/* 读取线上 data.json（UTF-8 安全解码，中文不会乱码） */
 async function fetchConfig(){
-  const res = await ghApi(`${API_BASE}/${repo}/contents/${DATA_PATH}?ref=${encodeURIComponent(branch)}`);
+  const res = await ghApi(`/contents/${DATA_PATH}?ref=${encodeURIComponent(branch)}`);
   const json = await res.json();
-  /* UTF-8 安全解码：atob 输出是 Latin-1，中文必须先转字节数组再由 TextDecoder 解码 */
   const rawBin = atob(json.content.replace(/\n/g, ""));
   const text = new TextDecoder().decode(Uint8Array.from(rawBin, (char) => char.charCodeAt(0)));
   config = normalizeConfig(JSON.parse(text));
   $("#topMeta").textContent = "已加载线上内容 · 保存后覆盖发布";
 }
+
 async function saveConfig(){
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(config, null, 2))));
   let sha = null;
   try{
-    const res = await ghApi(`${API_BASE}/${repo}/contents/${DATA_PATH}?ref=${encodeURIComponent(branch)}`);
+    const res = await ghApi(`/contents/${DATA_PATH}?ref=${encodeURIComponent(branch)}`);
     const json = await res.json();
     sha = json.sha || null;
-  }catch(e){ sha = null; }
-  const payload = { message:"更新相册内容 · " + new Date().toISOString(), content, branch };
+  }catch(error){ sha = null; }
+  const payload = { message: "更新相册内容 · " + new Date().toISOString(), content, branch };
   if(sha) payload.sha = sha;
-  await ghApi(`${API_BASE}/${repo}/contents/${DATA_PATH}`, {
+  await ghApi(`/contents/${DATA_PATH}`, {
     method: sha ? "PUT" : "POST",
-    headers:{ "Content-Type":"application/json" },
     body: JSON.stringify(payload)
   });
 }
+
+/* ============ 素材上传：照片 / 封面 / 音乐直传仓库 ============ */
+function readBase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const str = String(reader.result || "");
+      const idx = str.indexOf("base64,");
+      resolve(idx === -1 ? btoa(str) : str.slice(idx + 7));
+    };
+    reader.onerror = () => reject(new Error("文件读取失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function mediaPath(file, folder){
+  const extMatch = String(file.name || "").match(/\.[A-Za-z0-9]{1,10}$/);
+  const ext = (extMatch ? extMatch[0] : ".bin").toLowerCase();
+  const base = String(file.name || "file")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^\w-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return `${folder}/${stamp}-${base || "file"}${ext}`;
+}
+
+/* 用 GitHub Contents API 把素材作为独立文件上传，返回可公开访问的直链 */
+async function uploadMedia(file, folder){
+  const path = mediaPath(file, folder);
+  const content = await readBase64(file);
+  await ghApi(`/contents/${path}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      message: "上传相册素材 " + file.name,
+      content,
+      branch
+    })
+  });
+  return `https://raw.githubusercontent.com/${repo}/${encodeURIComponent(branch)}/${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+/* 图片压缩：最长边不超过 1600px，转 JPEG，减小仓库体积 */
+async function compressImage(file){
+  const objectUrl = URL.createObjectURL(file);
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("图片无法读取"));
+    img.src = objectUrl;
+  });
+  const maxSide = 1600;
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  URL.revokeObjectURL(objectUrl);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", .82));
+  if(!blob) throw new Error("图片压缩失败");
+  const base = String(file.name || "photo").replace(/\.[^.]+$/, "").replace(/[^\w-]+/g, "-").slice(0, 40);
+  return new File([blob], (base || "photo") + ".jpg", { type: "image/jpeg" });
+}
+
+async function handlePhotoUpload(input){
+  const ci = Number(input.dataset.chapter);
+  const chapter = config.chapters[ci];
+  const files = Array.from(input.files || []);
+  if(!chapter || !files.length) return;
+  input.value = "";
+  let okCount = 0;
+  for(let i = 0; i < files.length; i++){
+    setStatus(`正在上传照片 ${i + 1}/${files.length}…`);
+    try{
+      const compressed = await compressImage(files[i]);
+      const url = await uploadMedia(compressed, "photos");
+      chapter.photos.push({ src: url, note: "" });
+      okCount++;
+    }catch(error){
+      setStatus("第 " + (i + 1) + " 张上传失败：" + error.message, true);
+    }
+  }
+  renderEditor();
+  setStatus(okCount ? `${okCount} 张照片已上传，点击「保存并发布」后在前端展示。` : "照片上传失败。");
+}
+
+async function handleCoverUpload(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  input.value = "";
+  setStatus("正在上传封面…");
+  try{
+    const compressed = await compressImage(file);
+    const url = await uploadMedia(compressed, "photos");
+    config.meta.coverImage = url;
+    $("#coverInput").value = url;
+    setStatus("封面已上传，点击「保存并发布」生效。");
+    syncPreview();
+  }catch(error){
+    setStatus("封面上传失败：" + error.message, true);
+  }
+}
+
+async function handleMusicUpload(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  input.value = "";
+  setStatus("正在上传音乐…");
+  try{
+    const url = await uploadMedia(file, "music");
+    config.music.url = url;
+    $("#musicInput").value = url;
+    const audio = $("#musicPreview");
+    if(audio){ audio.src = url; audio.load(); }
+    setStatus("音乐已上传并应用，点击「保存并发布」后访客可听到。");
+    syncPreview();
+  }catch(error){
+    setStatus("音乐上传失败：" + error.message, true);
+  }
+}
+
 /* ============ 渲染编辑面板 ============ */
 const chapterList = $("#chapterList");
+
 function createPhotoRow(photo, ci, pi){
   const row = document.createElement("div");
   row.className = "photo-row";
+
   const image = document.createElement("img");
-  image.className = "photo-thumb"; image.src = photo.src || ""; image.alt = photo.note || "";
-  const right = document.createElement("div");
-  const field = document.createElement("label");
-  field.className = "field"; field.textContent = "备注";
+  image.className = "photo-thumb";
+  image.src = photo.src || "";
+  image.alt = photo.note || "照片";
+
+  const main = document.createElement("div");
+  main.className = "photo-main";
+
+  const srcField = document.createElement("label");
+  srcField.className = "field";
+  srcField.textContent = "图片链接";
+  const srcInput = document.createElement("input");
+  srcInput.type = "text";
+  srcInput.value = photo.src || "";
+  srcInput.placeholder = "https://...";
+  srcInput.dataset.bind = "photoSrc";
+  srcInput.dataset.chapter = String(ci);
+  srcInput.dataset.photo = String(pi);
+  srcField.append(srcInput);
+
+  const noteField = document.createElement("label");
+  noteField.className = "field";
+  noteField.textContent = "备注文字（照片下方的小字）";
   const note = document.createElement("textarea");
   note.value = photo.note || "";
-  note.dataset.bind = "photoNote"; note.dataset.chapter = String(ci); note.dataset.photo = String(pi);
-  field.append(note);
+  note.dataset.bind = "photoNote";
+  note.dataset.chapter = String(ci);
+  note.dataset.photo = String(pi);
+  noteField.append(note);
+
   const tools = document.createElement("div");
-  tools.className = "photo-row-tools";
-  const up = document.createElement("button"); up.type = "button"; up.className = "mini-btn"; up.textContent = "上移";
+  tools.className = "mini-tools";
+  const up = document.createElement("button");
+  up.type = "button"; up.className = "mini-btn"; up.textContent = "上移";
   up.dataset.action = "photoUp"; up.dataset.chapter = String(ci); up.dataset.photo = String(pi);
-  const down = document.createElement("button"); down.type = "button"; down.className = "mini-btn"; down.textContent = "下移";
+  const down = document.createElement("button");
+  down.type = "button"; down.className = "mini-btn"; down.textContent = "下移";
   down.dataset.action = "photoDown"; down.dataset.chapter = String(ci); down.dataset.photo = String(pi);
-  const del = document.createElement("button"); del.type = "button"; del.className = "mini-btn"; del.textContent = "删除";
+  const del = document.createElement("button");
+  del.type = "button"; del.className = "mini-btn danger"; del.textContent = "删除";
   del.dataset.action = "photoDelete"; del.dataset.chapter = String(ci); del.dataset.photo = String(pi);
   tools.append(up, down, del);
-  right.append(field, tools);
-  row.append(image, right);
+
+  main.append(srcField, noteField, tools);
+  row.append(image, main);
   return row;
 }
+
 function createChapterCard(chapter, ci){
   const card = document.createElement("div");
   card.className = "chapter-card";
+
   const cardHead = document.createElement("div");
   cardHead.className = "chapter-card-head";
   const label = document.createElement("span");
+  label.className = "chapter-no";
   label.textContent = `章节 ${String(ci + 1).padStart(2, "0")}`;
   const delBtn = document.createElement("button");
-  delBtn.type = "button"; delBtn.className = "mini-btn"; delBtn.textContent = "删除章节";
+  delBtn.type = "button"; delBtn.className = "mini-btn danger"; delBtn.textContent = "删除章节";
   delBtn.dataset.action = "chapterDelete"; delBtn.dataset.chapter = String(ci);
   cardHead.append(label, delBtn);
-  const title = document.createElement("input"); title.type = "text"; title.value = chapter.title || ""; title.placeholder = "章节标题";
+
+  const title = document.createElement("input");
+  title.type = "text"; title.value = chapter.title || ""; title.placeholder = "章节标题";
   title.dataset.bind = "chapterTitle"; title.dataset.chapter = String(ci);
-  const subtitle = document.createElement("input"); subtitle.type = "text"; subtitle.value = chapter.subtitle || ""; subtitle.placeholder = "章节副标题";
+
+  const subtitle = document.createElement("input");
+  subtitle.type = "text"; subtitle.value = chapter.subtitle || ""; subtitle.placeholder = "章节副标题（一句回忆）";
   subtitle.dataset.bind = "chapterSubtitle"; subtitle.dataset.chapter = String(ci);
+
   const photoList = document.createElement("div");
   photoList.className = "photo-list";
   chapter.photos.forEach((photo, pi) => photoList.append(createPhotoRow(photo, ci, pi)));
+
   const uploadLabel = document.createElement("label");
-  uploadLabel.className = "upload-btn"; uploadLabel.textContent = "上传照片";
+  uploadLabel.className = "upload-btn";
+  uploadLabel.textContent = "上传照片";
   const uploadInput = document.createElement("input");
-  uploadInput.type = "file"; uploadInput.accept = "image/*"; uploadInput.multiple = true;
+  uploadInput.type = "file";
+  uploadInput.accept = "image/*";
+  uploadInput.multiple = true;
+  uploadInput.className = "file-hidden";
   uploadInput.dataset.chapter = String(ci);
   uploadLabel.append(uploadInput);
+
   card.append(cardHead, title, subtitle, photoList, uploadLabel);
   return card;
 }
+
 function renderEditor(){
   $("#titleInput").value = config.meta.title || "";
   $("#quoteInput").value = config.meta.quote || "";
@@ -223,89 +830,105 @@ function renderEditor(){
   $("#signatureInput").value = config.meta.signature || "";
   $("#dateInput").value = config.meta.date || "";
   $("#musicInput").value = config.music.url || "";
-  $("#volumeInput").value = String(config.music.volume || .35);
+  const volume = config.music.volume || .35;
+  $("#volumeInput").value = String(volume);
+  $("#volumeLabel").textContent = Math.round(volume * 100) + "%";
+  const audio = $("#musicPreview");
+  if(audio && config.music.url && audio.src !== config.music.url){
+    audio.src = config.music.url;
+    audio.load();
+  }
   chapterList.replaceChildren();
   config.chapters.forEach((chapter, ci) => chapterList.append(createChapterCard(chapter, ci)));
+  syncPreview();
 }
-/* ============ 交互：文本编辑、结构变化、上传 ============ */
+
+/* ============ 实时预览：编辑内容同步给前端 iframe ============ */
+const PREVIEW_KEY = "memoryAlbumPreview";
+let previewTimer = null;
+function syncPreview(){
+  if(!config) return;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    try{ localStorage.setItem(PREVIEW_KEY, JSON.stringify(config)); }catch(error){ /* 超出本地配额时跳过 */ }
+  }, 500);
+}
+function openPreview(){
+  if(!config){ setStatus("请先连接并载入内容。", true); return; }
+  try{ localStorage.setItem(PREVIEW_KEY, JSON.stringify(config)); }catch(error){}
+  $("#previewOverlay").style.display = "block";
+  $("#previewFrame").src = "index.html?preview=1&t=" + Date.now();
+}
+function closePreview(){
+  $("#previewOverlay").style.display = "none";
+  try{ localStorage.removeItem(PREVIEW_KEY); }catch(error){}
+}
+$("#previewBtn").addEventListener("click", openPreview);
+$("#previewClose").addEventListener("click", closePreview);
+$("#previewRefresh").addEventListener("click", () => {
+  try{ localStorage.setItem(PREVIEW_KEY, JSON.stringify(config)); }catch(error){}
+  $("#previewFrame").src = "index.html?preview=1&t=" + Date.now();
+});
+document.addEventListener("keydown", (e) => {
+  if(e.key === "Escape" && $("#previewOverlay").style.display !== "none") closePreview();
+});
+
+/* ============ 文本编辑：直接改内存，所有输入都自动同步预览 ============ */
 document.addEventListener("input", (e) => {
   const t = e.target;
   const bind = t.dataset.bind;
-  if(!bind) return;
-  const v = t.value;
-  if(bind === "title") config.meta.title = v;
-  if(bind === "quote") config.meta.quote = v;
-  if(bind === "cover") config.meta.coverImage = v;
-  if(bind === "signature") config.meta.signature = v;
-  if(bind === "date") config.meta.date = v;
-  if(bind === "volume") config.music.volume = clampNumber(v, 0, 1);
-  if(bind === "chapterTitle") config.chapters[Number(t.dataset.chapter)].title = v;
-  if(bind === "chapterSubtitle") config.chapters[Number(t.dataset.chapter)].subtitle = v;
-  if(bind === "photoNote") config.chapters[Number(t.dataset.chapter)].photos[Number(t.dataset.photo)].note = v;
+  if(!bind || !config) return;
+  const ci = Number(t.dataset.chapter);
+  const pi = Number(t.dataset.photo);
+  const chapter = config.chapters[ci];
+  if(bind === "title") config.meta.title = t.value;
+  if(bind === "quote") config.meta.quote = t.value;
+  if(bind === "cover") config.meta.coverImage = t.value;
+  if(bind === "signature") config.meta.signature = t.value;
+  if(bind === "date") config.meta.date = t.value;
+  if(bind === "volume"){ config.music.volume = clampNumber(t.value, 0, 1); $("#volumeLabel").textContent = Math.round(config.music.volume * 100) + "%"; }
+  if(bind === "chapterTitle" && chapter) chapter.title = t.value;
+  if(bind === "chapterSubtitle" && chapter) chapter.subtitle = t.value;
+  if(bind === "photoSrc" && chapter && chapter.photos[pi]) chapter.photos[pi].src = t.value;
+  if(bind === "photoNote" && chapter && chapter.photos[pi]) chapter.photos[pi].note = t.value;
+  syncPreview();
 });
 document.addEventListener("input", (e) => {
-  if(e.target.id === "musicInput") config.music.url = e.target.value;
+  if(e.target.id === "musicInput" && config){
+    config.music.url = e.target.value;
+    syncPreview();
+  }
 });
+
+/* 结构操作：删除 / 上移 / 下移 */
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-action]");
-  if(!btn) return;
+  if(!btn || !config) return;
   const action = btn.dataset.action;
   const ci = Number(btn.dataset.chapter);
   const pi = Number(btn.dataset.photo);
   const chapter = config.chapters[ci];
-  if(chapter === undefined) return;
+  if(Number.isFinite(ci) && chapter === undefined) return;
   if(action === "chapterDelete"){ config.chapters.splice(ci, 1); }
-  if(action === "photoDelete"){ chapter.photos.splice(pi, 1); }
-  if(action === "photoUp" && pi > 0){ const [photo] = chapter.photos.splice(pi, 1); chapter.photos.splice(pi - 1, 0, photo); }
-  if(action === "photoDown" && pi < chapter.photos.length - 1){ const [photo] = chapter.photos.splice(pi, 1); chapter.photos.splice(pi + 1, 0, photo); }
+  if(action === "photoDelete" && chapter){ chapter.photos.splice(pi, 1); }
+  if(action === "photoUp" && chapter && pi > 0){ const [photo] = chapter.photos.splice(pi, 1); chapter.photos.splice(pi - 1, 0, photo); }
+  if(action === "photoDown" && chapter && pi < chapter.photos.length - 1){ const [photo] = chapter.photos.splice(pi, 1); chapter.photos.splice(pi + 1, 0, photo); }
   renderEditor();
 });
+
+/* 文件上传入口 */
 document.addEventListener("change", (e) => {
-  if(e.target.matches('input[type="file"][data-chapter]')) handleUpload(e.target);
+  if(e.target.matches('input[type="file"][data-chapter]')) handlePhotoUpload(e.target);
+  if(e.target.id === "coverFileInput") handleCoverUpload(e.target);
+  if(e.target.id === "musicFileInput") handleMusicUpload(e.target);
 });
 $("#addChapterBtn").addEventListener("click", () => {
-  config.chapters.push({ title:"新章节", subtitle:"写一点当时的天气或心情。", photos:[] });
+  config.chapters.push({ title: "新章节", subtitle: "写一点当时的天气或心情。", photos: [] });
   renderEditor();
+  setStatus("已新增章节，点击「保存并发布」生效。");
 });
-/* ============ 图片上传：压缩后转 base64 存进 data.json ============ */
-async function compressImage(file, maxWidth = 1600, quality = .82){
-  let bitmap;
-  try{ bitmap = await createImageBitmap(file); }
-  catch(error){
-    return await new Promise((resolve, reject) => {
-      const objectUrl = URL.createObjectURL(file);
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = objectUrl;
-    });
-  }
-  const scale = Math.min(1, maxWidth / bitmap.width);
-  const cv = document.createElement("canvas");
-  cv.width = Math.round(bitmap.width * scale);
-  cv.height = Math.round(bitmap.height * scale);
-  const ctx = cv.getContext("2d");
-  ctx.drawImage(bitmap, 0, 0, cv.width, cv.height);
-  return cv.toDataURL("image/jpeg", quality);
-}
-async function handleUpload(input){
-  const ci = Number(input.dataset.chapter);
-  const chapter = config.chapters[ci];
-  if(!chapter || !input.files || !input.files.length) return;
-  setStatus("正在处理图片…");
-  for(const file of Array.from(input.files)){
-    try{
-      const dataUrl = await compressImage(file);
-      chapter.photos.push({ src:dataUrl, note:"" });
-    }catch(error){
-      setStatus("有一张图片无法读取，请换一张。", true);
-    }
-  }
-  input.value = "";
-  renderEditor();
-  setStatus("照片已加入列表，点击「保存并发布」后才会同步到线上。");
-}
-/* ============ 连接仓库、保存、重置 ============ */
+
+/* ============ 连接仓库、保存、重载、重置 ============ */
 const LS_TOKEN = "albumAdminToken";
 const LS_REPO = "albumAdminRepo";
 const LS_BRANCH = "albumAdminBranch";
@@ -333,8 +956,7 @@ $("#connectBtn").addEventListener("click", async () => {
     renderEditor();
     setSetupStatus("连接成功。");
   }catch(error){
-    if(error.message.indexOf("404") !== -1){
-      /* data.json 还不存在 → 用默认配置新建一个编辑起点 */
+    if(String(error.message).indexOf("404") !== -1){
       config = deepClone(DEFAULT_CONFIG);
       $("#setup").style.display = "none";
       $("#editor").style.display = "block";
@@ -351,6 +973,7 @@ $("#saveBtn").addEventListener("click", async () => {
   setStatus("正在保存并发布…");
   try{
     await saveConfig();
+    $("#topMeta").textContent = "已发布 · 前端最多 1 分钟内自动同步";
     setStatus("发布成功！前端访问者最多 1 分钟内自动看到新内容。");
   }catch(error){
     setStatus("保存失败：" + error.message, true);
@@ -366,14 +989,14 @@ $("#reloadBtn").addEventListener("click", async () => {
   }catch(error){ setStatus("重新加载失败：" + error.message, true); }
 });
 $("#resetBtn").addEventListener("click", () => {
-  if(!confirm("确定用示例内容替换当前编辑内容吗？这一操作不会立即发布，需再点击「保存并发布」。")) return;
+  if(!confirm("确定用示例内容替换当前编辑内容吗？点击「保存并发布」后才会生效。")) return;
   config = deepClone(DEFAULT_CONFIG);
   renderEditor();
   setStatus("已替换为示例内容，点击「保存并发布」生效。");
 });
+
 (function init(){
   restoreLocal();
-  /* 若本地已有 Token 且有内容，自动进入编辑态 */
   if(token && repo){
     (async () => {
       try{
@@ -381,9 +1004,7 @@ $("#resetBtn").addEventListener("click", () => {
         $("#setup").style.display = "none";
         $("#editor").style.display = "block";
         renderEditor();
-      }catch(error){
-        /* 连接失败时停留在配置页，让用户重新连接 */
-      }
+      }catch(error){ /* 连接失败时停留在配置页 */ }
     })();
   }
 })();
@@ -394,18 +1015,27 @@ $("#resetBtn").addEventListener("click", () => {
 https://standcun.github.io/memory-film-album/admin.html
 
 【首次使用】
-1. 在这里粘贴你的 GitHub Token（需要 repo 权限，即 ghp_ 系列令牌）。
-2. 仓库已填好 STandCUN/memory-film-album，分支 main，点击「连接并载入内容」。
-3. 载入后即可编辑，改完点「保存并发布」。
+1. 粘贴 GitHub Token（需要 repo 权限的 ghp_ 系列令牌）。
+2. 仓库名 STandCUN/memory-film-album、分支 main 已默认填好，点击「连接并载入内容」。
+3. 之后所有修改都直接写进 data.json，点「保存并发布」即生效。
+
+【照片 / 音乐上传】
+- 每个章节底部有「上传照片」，可一次选多张；文件会压缩后上传到仓库 photos/ 文件夹。
+- 封面和音乐也支持从本地上传，音乐存到 music/ 文件夹并自动填入链接。
+- 上传素材会立即进入仓库，但相册内容要等点「保存并发布」后才会引用它们。
+
+【实时预览】
+- 点「实时预览」可打开前端相册窗口，编辑内容会实时同步显示。
+- 关闭预览后相册页自动恢复线上正式内容。
 
 【保存与同步】
-- 「保存并发布」会把相册内容提交覆盖到仓库的 data.json。
-- 前端页面每 60 秒自动刷新一次，所以后台保存后，访问者不手动刷新也能在 1 分钟内看到新内容。
-- 上传的照片会压缩到最大宽度 1600px 的 JPEG，并以 base64 存进 data.json，所以大图片会增大该文件体积。
+- 前端每 60 秒自动读取一次 data.json，后台保存后访客可在 1 分钟内看到新内容。
+- GitHub Pages 构建一般也需要 1 分钟左右，正式地址始终是：
+  https://standcun.github.io/memory-film-album/
 
 【权限提示】
-- Token 只保存在你当前浏览器的 localStorage，不会上传到其他服务。
-- 建议使用一个只授权该仓库写权限、并在使用后及时撤销的 Token 更安全。
+- Token 只保存在当前浏览器 localStorage，不会上传到其他服务。
+- 建议使用只授权该仓库写权限的 fine-grained Token，并在不需要时及时撤销。
 -->
 </body>
 </html>
