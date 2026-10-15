@@ -528,8 +528,36 @@ async function loadConfig(){
     /* 读取失败时保留当前内容，不打断浏览 */
   }
 }
+
+/* ============ 后台实时预览支持 ============
+   admin.html 打开预览时，会把当前未保存的编辑内容写入 localStorage。
+   本页以 ?preview=1 打开时优先使用这份草稿，不轮询线上 data.json。 */
+const PREVIEW_KEY = "memoryAlbumPreview";
+function applyPreviewConfig(){
+  try{
+    const raw = localStorage.getItem(PREVIEW_KEY);
+    if(!raw) return;
+    const next = normalizeConfig(JSON.parse(raw));
+    if(JSON.stringify(next) !== lastSignature){
+      state = next;
+      renderAll();
+    }
+  }catch(error){ /* 草稿损坏时忽略，继续显示当前内容 */ }
+}
+function getPreviewDraft(){
+  try{ return localStorage.getItem(PREVIEW_KEY); }
+  catch(error){ return null; }
+}
+window.addEventListener("storage", (event) => {
+  if(event.key === PREVIEW_KEY) applyPreviewConfig();
+});
 function startSync(){
   renderAll();
+  const isPreview = new URLSearchParams(location.search).get("preview") === "1";
+  if(isPreview && getPreviewDraft()){
+    applyPreviewConfig();
+    return;
+  }
   loadConfig();
   setInterval(loadConfig, REFRESH_MS);
 }
